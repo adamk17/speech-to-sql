@@ -2,6 +2,7 @@ import re
 from openai import OpenAI
 import config
 import database
+from rag.retrieve import retrieve
 
 client = OpenAI(
     api_key=config.LLM_API_KEY,
@@ -19,7 +20,15 @@ Rules:
 
 Database schema:
 {schema}
+
+Relevant PostgreSQL documentation:
+{pg_docs}
 """
+
+
+def get_rag_context(question: str) -> str:
+    docs = retrieve(question, n_results=3)
+    return "\n\n---\n\n".join(docs)
 
 
 def extract_sql(text: str) -> str:
@@ -33,7 +42,8 @@ def extract_sql(text: str) -> str:
 
 def ask(user_question: str) -> str:
     schema = database.get_schema()
-    system = SYSTEM_PROMPT.format(schema=schema)
+    pg_docs = get_rag_context(user_question)
+    system = SYSTEM_PROMPT.format(schema=schema, pg_docs=pg_docs)
 
     response = client.chat.completions.create(
         model=config.LLM_MODEL,

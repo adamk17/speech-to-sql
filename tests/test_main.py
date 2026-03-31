@@ -1,8 +1,10 @@
 import pytest
 import json
 import os
-from unittest.mock import patch
-from main import print_history, export_history
+import psycopg2
+import openai
+from unittest.mock import patch, MagicMock
+from main import print_history, export_history, main
 
 
 SAMPLE_HISTORY = [
@@ -70,3 +72,37 @@ class TestExportHistory:
         data = json.loads(written["content"])
         assert data[0]["question"] == "show all employees"
         assert data[0]["sql"] == "SELECT * FROM employees"
+
+
+class TestMainErrorHandling:
+    def _run_main_with_question(self, question, ask_side_effect):
+        with patch("main.config.validate"), \
+             patch("builtins.input", side_effect=[question, KeyboardInterrupt]), \
+             patch("main.agent.ask", side_effect=ask_side_effect):
+            main()
+
+    def test_db_connection_error_in_ask(self, capsys):
+        self._run_main_with_question(
+            "show employees",
+            psycopg2.OperationalError("connection refused")
+        )
+        output = capsys.readouterr().out
+        assert "Cannot connect to database" in output
+
+    def test_llm_api_connection_error(self, capsys):
+        self._run_main_with_question(
+            "show employees",
+            openai.APIConnectionError(request=MagicMock())
+        )
+        output = capsys.readouterr().out
+        assert "Cannot connect to LLM API" in output
+
+    def test_llm_auth_error(self, capsys):
+        self._run_main_with_question(
+            "show employees",
+            openai.AuthenticationError(
+                message="invalid key", response=MagicMock(), body={}
+            )
+        )
+        output = capsys.readouterr().out
+        assert "Invalid LLM API key" in output

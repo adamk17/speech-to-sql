@@ -81,6 +81,9 @@ def main():
         print("\nGenerating SQL query...")
         try:
             sql = agent.ask(question)
+        except psycopg2.OperationalError:
+            print("Error: Cannot connect to database. Check your connection settings in .env.\n")
+            continue
         except openai.APIConnectionError:
             print("Error: Cannot connect to LLM API. Check your internet connection.\n")
             continue

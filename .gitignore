@@ -1,0 +1,10 @@
+.env
+history/*
+!history/.gitkeep
+CLAUDE.md
+helpers for me/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/chroma_db/
+test_retrieve.py

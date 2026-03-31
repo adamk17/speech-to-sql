@@ -82,6 +82,7 @@ def execute_query(sql: str) -> tuple[list, list]:
 
 
 def execute_select(sql: str) -> tuple[list, list]:
-    if not sql.strip().upper().startswith("SELECT"):
+    first_word = sql.strip().upper().split()[0]
+    if first_word not in ("SELECT", "WITH"):
         raise ValueError("Only SELECT statements are allowed")
     return execute_query(sql)
