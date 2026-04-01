@@ -1,6 +1,4 @@
-import pytest
 import json
-import os
 import psycopg2
 import openai
 from unittest.mock import patch, MagicMock
