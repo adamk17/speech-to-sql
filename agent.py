@@ -4,10 +4,17 @@ import config
 import database
 from rag.retrieve import retrieve
 
-client = OpenAI(
-    api_key=config.LLM_API_KEY,
-    base_url=config.LLM_BASE_URL,
-)
+_client = None
+
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is None:
+        _client = OpenAI(
+            api_key=config.LLM_API_KEY,
+            base_url=config.LLM_BASE_URL,
+        )
+    return _client
 
 SYSTEM_PROMPT = """You are an expert SQL assistant. Your job is to convert natural language questions (in Polish or English) into valid PostgreSQL SELECT queries.
 
@@ -45,7 +52,7 @@ def ask(user_question: str) -> str:
     pg_docs = get_rag_context(user_question)
     system = SYSTEM_PROMPT.format(schema=schema, pg_docs=pg_docs)
 
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=config.LLM_MODEL,
         messages=[
             {"role": "system", "content": system},
