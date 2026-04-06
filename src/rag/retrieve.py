@@ -25,9 +25,7 @@ class DocumentRetriever:
                     embedding_function=ef,
                 )
             except ValueError:
-                raise RuntimeError(
-                    f"RAG index not found. Run 'python -m src.rag.build_index' to build it first."
-                )
+                raise RuntimeError("RAG index not found. Run 'python -m src.rag.build_index' to build it first.")
         return self._collection
 
     def retrieve(self, query: str, n_results: int = 3) -> list[str]:
