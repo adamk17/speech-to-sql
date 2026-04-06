@@ -1,0 +1,23 @@
+.git/
+.github/
+.vscode/
+.env
+.ruff_cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Development
+tests/
+helpers for me/
+test_retrieve.py
+pytest.ini
+asd.txt
+
+# Data - mounted as volumes at runtime
+data/
+history/
+
+# Docs
+README.md
+CLAUDE.md

@@ -12,7 +12,7 @@ services:
   build-index:
     build: .
     env_file: .env
-    command: python -m rag.build_index
+    command: python -m src.rag.build_index
     volumes:
       - ./data:/app/data
       - hf_cache:/root/.cache/huggingface

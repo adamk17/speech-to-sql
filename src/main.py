@@ -1,11 +1,10 @@
-import config
-import agent
-import database
-import psycopg2
-import openai
 import json
 import os
 from datetime import datetime
+
+import config
+from database import Database
+from pipeline import Pipeline, PipelineResult
 
 
 def print_results(columns: list, rows: list):
@@ -26,6 +25,17 @@ def print_results(columns: list, rows: list):
     print(f"\n({len(rows)} {'row' if len(rows) == 1 else 'rows'})")
 
 
+def print_history(history: list):
+    if not history:
+        print("(no history)\n")
+        return
+    for i, entry in enumerate(history, 1):
+        print(f"[{i}] {entry['question']}")
+        print(f"    SQL: {entry['sql']}")
+        print_results(entry['columns'], entry['rows'])
+        print()
+
+
 def export_history(history: list):
     if not history:
         print("(no history to export)\n")
@@ -37,15 +47,15 @@ def export_history(history: list):
     print(f"Exported to {filename}\n")
 
 
-def print_history(history: list):
-    if not history:
-        print("(no history)\n")
-        return
-    for i, entry in enumerate(history, 1):
-        print(f"[{i}] {entry['question']}")
-        print(f"    SQL: {entry['sql']}")
-        print_results(entry['columns'], entry['rows'])
-        print()
+def display_result(result: PipelineResult):
+    if result.sql:
+        print(f"\nSQL:\n{result.sql}\n")
+    if result.columns and result.rows:
+        print("Results:")
+        print_results(result.columns, result.rows)
+    if result.message:
+        print(result.message)
+    print()
 
 
 def main():
@@ -58,6 +68,15 @@ def main():
     except ValueError as e:
         print(f"Configuration error: {e}")
         return
+
+    db = Database(
+        host=config.DB_HOST,
+        port=config.DB_PORT,
+        dbname=config.DB_NAME,
+        user=config.DB_USER,
+        password=config.DB_PASSWORD,
+    )
+    pipeline = Pipeline(db=db)
 
     while True:
         try:
@@ -78,45 +97,21 @@ def main():
             print("Goodbye!")
             break
 
-        print("\nGenerating SQL query...")
         try:
-            sql = agent.ask(question)
-        except psycopg2.OperationalError:
-            print("Error: Cannot connect to database. Check your connection settings in .env.\n")
-            continue
-        except openai.APIConnectionError:
-            print("Error: Cannot connect to LLM API. Check your internet connection.\n")
-            continue
-        except openai.AuthenticationError:
-            print("Error: Invalid LLM API key. Check LLM_API_KEY in .env.\n")
-            continue
-        except openai.APIError as e:
-            print(f"Error: LLM API error: {e}\n")
-            continue
-
-        if sql.startswith("ERROR:"):
-            print(f"Agent: {sql}\n")
-            continue
-
-        print(f"\nSQL:\n{sql}\n")
-
-        print("Executing query...")
-        try:
-            columns, rows = database.execute_select(sql)
-            print("\nResults:")
-            print_results(columns, rows)
-            history.append({"question": question, "sql": sql, "columns": columns, "rows": rows})
-        except psycopg2.OperationalError:
-            print("Error: Cannot connect to database. Check your connection settings in .env.\n")
-            continue
-        except psycopg2.Error as e:
-            print(f"Error: Invalid SQL query: {e}\n")
-            continue
-        except ValueError as e:
+            result = pipeline.run(question)
+        except Exception as e:
             print(f"Error: {e}\n")
             continue
 
-        print()
+        display_result(result)
+
+        if result.columns and result.rows:
+            history.append({
+                "question": question,
+                "sql": result.sql,
+                "columns": result.columns,
+                "rows": result.rows,
+            })
 
 
 if __name__ == "__main__":
